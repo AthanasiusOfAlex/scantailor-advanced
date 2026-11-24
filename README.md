@@ -1,452 +1,108 @@
 # ScanTailor Advanced
 
-The ScanTailor version that merges the features of the `ScanTailor Featured` and `ScanTailor Enhanced` versions,
-brings new ones and fixes.  
+ScanTailor is an interactive post-processing tool for scanned pages. You give it raw scans; it rotates,
+splits, deskews and crops them, sets margins, and produces clean black-and-white, colour or mixed output
+pages, ready to print or to assemble into a PDF or [DjVu](https://en.wikipedia.org/wiki/DjVu) file.
+Scanning, OCR and assembling multi-page documents are out of scope.
 
-### Video demonstration of an older version
-[![image](https://github.com/ScanTailor-Advanced/scantailor-advanced/assets/6695517/d0e1dbbe-0e97-4d72-a011-28b171cad939)](https://vimeo.com/12524529) 
-If the video doesn't play, you may to have to login into your vimeo account.
+ScanTailor Advanced combines the ScanTailor Featured, Enhanced and Universal variants and adds many
+features and fixes of its own.
 
-## Contents:
-* [Description](#description)
-* [Building](#building)
-* [About this fork](#about-this-fork)
-* [Features](#features)
-  * [**ScanTailor Enhanced**](#scantailor-enhanced)
-    * [Auto margins \[improved\]](#auto-margins-improved)
-    * [Page detect \[reworked\]](#page-detect-reworked)
-    * [Deviation \[reworked\]](#deviation-reworked)
-    * [Picture shape \[reworked\]](#picture-shape-reworked)
-    * [Multi column thumbnails view \[reworked\]](#multi-column-thumbnails-view-reworked)
-  * [**ScanTailor Featured**](#scantailor-featured)
-    * [ScanTailor Featured fixes & improvements](#scantailor-featured-fixes--improvements)
-    * [Line vertical dragging on dewarp](#line-vertical-dragging-on-dewarp)
-    * [Square picture zones \[reworked\]](#square-picture-zones-reworked)
-    * [Auto save project \[optimized\]](#auto-save-project-optimized)
-    * [Quadro Zoner \[reworked\]](#quadro-zoner-reworked)
-    * [Marginal dewarping](#marginal-dewarping)
-  * [**ScanTailor Universal**](#scantailor-universal)
-    * [ScanTailor Universal fixes & improvements](#scantailor-universal-fixes--improvements)
-  * [**ScanTailor Advanced**](#scantailor-advanced-features)
-    * [ScanTailor Advanced fixes & improvements](#scantailor-advanced-fixes--improvements)
-    * [Light and Dark color schemes](#light-and-dark-color-schemes)
-    * [Multi-threading support for batch processing](#multi-threading-support-for-batch-processing)
-    * [Full control over settings on output](#full-control-over-settings-on-output)
-    * [Filling outside areas](#filling-outside-areas)
-    * [Tiff compression](#tiff-compression)
-    * [Adaptive binarization](#adaptive-binarization)
-    * [Splitting output](#splitting-output)
-    * [Original background](#original-background)
-    * [Color segmenter and posterization](#color-segmenter-and-posterization)
-    * [Rectangular picture shape](#rectangular-picture-shape)
-    * [New zone interaction modes](#new-zone-interaction-modes)
-    * [Saving zoom and focus on switching output tabs](#saving-zoom-and-focus-on-switching-output-tabs)
-    * [Measurement units system](#measurement-units-system)
-    * [Status bar panel](#status-bar-panel)
-    * [Default parameters](#default-parameters)
-    * [Collapsible filter options](#collapsible-filter-options)
-    * [Auto adjusting content area](#auto-adjusting-content-area)
-    * [Black on white detection](#black-on-white-detection)
-    * [Guides](#guides)
-* [License](#license)
+## This branch: macOS on Apple Silicon
 
-## Description
+This is the `macos-arm64` branch of a fork of
+[ScanTailor-Advanced/scantailor-advanced](https://github.com/ScanTailor-Advanced/scantailor-advanced).
+It is upstream **1.2.1** plus the fixes below, and it is what the Homebrew tap
+[AthanasiusOfAlex/scantailor-advanced-osx](https://github.com/AthanasiusOfAlex/scantailor-advanced-osx)
+builds: a native ARM64 build with Qt 6.
 
-ScanTailor is an interactive post-processing tool for scanned pages. 
-It performs operations such as:
-  - [page splitting](https://github.com/scantailor/scantailor/wiki/Split-Pages), 
-  - [deskewing](https://github.com/scantailor/scantailor/wiki/Deskew), 
-  - [adding/removing borders](https://github.com/scantailor/scantailor/wiki/Page-Layout), 
-  - [selecting content](https://github.com/scantailor/scantailor/wiki/Select-Content) 
-  - ... and others. 
-  
-You give it raw scans, and you get pages ready to be printed or assembled into a PDF 
-or [DjVu](http://elpa.gnu.org/packages/djvu.html) file. Scanning, optical character recognition, 
-and assembling multi-page documents are out of scope of this project.
+| Change | Upstream PR |
+|---|---|
+| **No more batch-processing hangs.** The store behind deviation highlighting was shared between worker threads and the main thread without locking. The freed worker also gets its next page before the GUI updates. | [#193](https://github.com/ScanTailor-Advanced/scantailor-advanced/pull/193) |
+| **A page that fails no longer kills the app.** An exception in one page's task used to end the session; now it is logged, the page stays unprocessed, and the batch finishes. | [#194](https://github.com/ScanTailor-Advanced/scantailor-advanced/pull/194) |
+| **Old projects open again.** 1.2.0 raised the project-file version without changing the format, so projects saved by 1.0.x and 1.1.x were rejected. Pages from those projects also keep oblique correction off, as before. | [#195](https://github.com/ScanTailor-Advanced/scantailor-advanced/pull/195) |
+| **Faster batch runs.** Colour pages load about 40% faster, and data needed only for on-screen display is no longer built for every page in a batch. Re-running a stage over a processed 532-page project takes about a third of the time, with byte-identical output. | [#196](https://github.com/ScanTailor-Advanced/scantailor-advanced/pull/196) |
+| **Local thumbnail cache for cloud-synced projects.** For projects in OneDrive, Dropbox, Google Drive or iCloud Drive, thumbnails are kept in `~/Library/Caches/scantailor-advanced`, so reopening a project does not download one thumbnail at a time. `SCANTAILOR_THUMB_CACHE=local` or `project` overrides the detection. | macOS only |
+| **Settings outside the app bundle.** An app bundle always uses `~/.config/scantailor-advanced/` instead of a `config` folder next to the executable, so settings survive upgrades and the code signature stays valid. | macOS only |
+| **`PerfDriver`**, a developer-only hook (`SCANTAILOR_PERF_SCRIPT`) for scripted timing runs. It is inert unless the variable is set. | not proposed |
 
-## Building
+> [!TIP]
+> If a project lives in a cloud-synced folder and its files show a cloud icon in Finder, every page
+> ScanTailor reads is downloaded first, at about a second per file. Before working on the project,
+> right-click its folder and choose **Always Keep on This Device**.
 
-Go to [this repository](https://github.com/ScanTailor-Advanced/scantailor-libs-build) and follow the instructions given there.
+## Contents
 
-**Windows – large JPEG/PNG (issue #20):** If large-format JPEG or PNG files fail to load on Windows, ensure the build uses **libjpeg-turbo** (or libjpeg 9+) and a recent libpng. The [scantailor-libs-build](https://github.com/ScanTailor-Advanced/scantailor-libs-build) repository provides compatible libraries.
+- [Installing](#installing)
+- [Building from source](#building-from-source)
+- [Features](#features)
+  - [Working with projects](#working-with-projects)
+  - [Thumbnails and navigation](#thumbnails-and-navigation)
+  - [Fix Orientation](#fix-orientation)
+  - [Split Pages](#split-pages)
+  - [Deskew](#deskew)
+  - [Select Content](#select-content)
+  - [Margins](#margins)
+  - [Output](#output)
+  - [Batch processing](#batch-processing)
+- [History and credits](#history-and-credits)
+- [License](#license)
 
-**Windows – Visual C++ runtime (issue #101):** Pre-built binaries are linked with **Microsoft Visual C++** (MSVC) runtimes. If the application does not start and Windows reports missing **`VCRUNTIME*.dll`**, **`MSVCP*.dll`**, or similar, install the **latest supported x64 “Visual C++ Redistributable”** from Microsoft’s page: [Latest supported VC++ Redistributable downloads](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170). Match **x64** vs **x86** to the build you run.
+## Installing
 
-**Windows – supported OS versions (issue #101):** Release builds follow upstream **Qt** and **toolchain** support policies; **legacy Windows** (for example Windows 7) is **not** exercised in this project’s CI and is **best-effort only**. You may need an **older tagged release** or a **self-built** binary against an older Qt/MSVC stack. Community reports (including compatibility tips) are welcome in the issue tracker.
+**macOS (Apple Silicon):** use the Homebrew tap, which builds this branch:
 
-**Linux – Wayland (issue #97):** On Qt5 builds, if `XDG_SESSION_TYPE` is `wayland` and `QT_QPA_PLATFORM` is not set, the application defaults to the X11 (`xcb`) platform plugin to avoid broken dialogs and painting. Set **`SCANTAILOR_NO_XCB_FALLBACK=1`** in the environment to keep native Wayland and, if needed, set `QT_QPA_PLATFORM=wayland` or `QT_QPA_PLATFORM=xcb` yourself.
+```bash
+brew tap AthanasiusOfAlex/scantailor-advanced-osx
+```
 
-**Linux – Flatpak / Flathub ([issue #105](https://github.com/ScanTailor-Advanced/scantailor-advanced/issues/105)):**
+```bash
+brew install scantailor-advanced
+```
 
-| | |
-|--|--|
-| **Day-to-day binaries** | Prefer [GitHub Releases](https://github.com/ScanTailor-Advanced/scantailor-advanced/releases) when the project publishes `.deb` / AppImage (or other) builds for a tagged version. |
-| **Install from Flathub** | There is **no** official Flathub listing yet for this fork under the new ID. Shipping there requires a maintainer to follow [Flathub submission](https://docs.flathub.org/docs/for-app-authors/submission/) (separate repo/PR to [flathub/flathub](https://github.com/flathub/flathub)), AppStream metainfo, screenshots, and reviewer feedback. The in-repo manifest is meant to make that step mostly mechanical; issue [#105](https://github.com/ScanTailor-Advanced/scantailor-advanced/issues/105) tracks coordination. |
-| **Local Flatpak (maintainers / QA)** | Manifest: [`flatpak/org.scantailor.Advanced.json`](flatpak/org.scantailor.Advanced.json). Example: `flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo` then `flatpak-builder --user --install-deps-from=flathub --force-clean build-dir flatpak/org.scantailor.Advanced.json` (installs the KDE runtime/SDK from Flathub on first run). |
-| **CI smoke build** | On each **`v*` tag** push (and via **workflow dispatch**), [`.github/workflows/flatpak.yml`](.github/workflows/flatpak.yml) runs `flatpak-builder` and uploads a **`.flatpak` bundle** as a workflow artifact for smoke testing. This is **not** the Flathub build pipeline. |
+The tap also has an install script and a bundler that makes a self-contained `.app` and `.dmg`; see
+[its README](https://github.com/AthanasiusOfAlex/scantailor-advanced-osx#readme).
 
-**Application ID:** the manifest uses `org.scantailor.Advanced` so it does **not** replace the legacy `com.github._4lex4.*` Flatpak. Author docs: [for app authors](https://docs.flathub.org/docs/for-app-authors/).
+**Linux and Windows:** use upstream's
+[releases](https://github.com/ScanTailor-Advanced/scantailor-advanced/releases).
 
-**Linux – GitHub Releases (.deb / AppImage, [issue #64](https://github.com/ScanTailor-Advanced/scantailor-advanced/issues/64)):** Version tags matching `v*` run [`.github/workflows/release.yml`](.github/workflows/release.yml), which produces a `.deb` ([`build-deb.sh`](build-deb.sh)) and an AppImage attached to the GitHub Release when the workflow is enabled. The AppImage is built on **Ubuntu 24.04** (`ubuntu-latest`) and requires a compatible **glibc** (typically **Ubuntu 24.04+** or equivalent). On **Ubuntu 22.04** and similar older bases, use the **`.deb`** package or build from source. Report problems with those binaries in [issue #64](https://github.com/ScanTailor-Advanced/scantailor-advanced/issues/64).
+- **Linux packages.** Each `v*` tag produces a `.deb` and an AppImage. The AppImage is built on
+  Ubuntu 24.04 and needs a matching glibc; on Ubuntu 22.04 and older, use the `.deb` or build from source.
+- **Flatpak.** There is no Flathub listing yet ([#105](https://github.com/ScanTailor-Advanced/scantailor-advanced/issues/105)).
+  The manifest [`flatpak/org.scantailor.Advanced.json`](flatpak/org.scantailor.Advanced.json) builds
+  locally with `flatpak-builder`. Its ID, `org.scantailor.Advanced`, does not replace the old
+  `com.github._4lex4.*` Flatpak.
+- **Wayland.** Qt 5 builds switch to X11 (`xcb`) on Wayland, because Qt 5 there breaks dialogs and
+  painting. Set `SCANTAILOR_NO_XCB_FALLBACK=1` to keep native Wayland. Qt 6 builds are not affected.
+- **Windows runtime.** If the program does not start and Windows reports a missing `VCRUNTIME*.dll` or
+  `MSVCP*.dll`, install the
+  [Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)
+  that matches the build (x64 or x86). Windows 7 and other old versions are not tested.
+- **Large JPEG/PNG files on Windows** need a build with libjpeg-turbo (or libjpeg 9+) and a recent
+  libpng, as provided by [scantailor-libs-build](https://github.com/ScanTailor-Advanced/scantailor-libs-build).
 
-**Community examples / test data:** See also [scantailor-testing](https://github.com/ImageProcessing-ElectronicPublications/scantailor-testing) (community repository; issue [#43](https://github.com/ScanTailor-Advanced/scantailor-advanced/issues/43)).
+## Building from source
 
-## About this fork
+The build needs CMake, a C++17 compiler, Boost, libjpeg, libpng, libtiff, zlib, and Qt 6 (preferred) or
+Qt 5. Build out of tree. `-DBUILD_TESTS=OFF` skips the unit tests, for example in a minimal chroot.
 
-Unfortunately, the [repository](https://github.com/4lex4/scantailor-advanced/releases) of @4lex4 seems to be no longer active.
+### macOS
 
-For this reason I have created this fork. It contains:
-- German translation
-- Polish translation (PR in the original repository, credit goes to @ukolaj-s)
-- French translation (PR in the original repository, credit goes to @maltaisn)
-- Korean translation (PR in the original repository, credit goes to @brendan-t and @mirusu400)
-- Beside 'background' and white you can now choose black as filling color
-- 1200 DPI output option
-- Some other fixes and improvements ...
+```bash
+brew install cmake boost qt libpng libtiff jpeg-turbo
+```
 
-PRs are highly welcome ;-)
+```bash
+git clone --branch macos-arm64 https://github.com/AthanasiusOfAlex/scantailor-advanced.git
+```
 
-## Features
+```bash
+cd scantailor-advanced
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DPORTABLE_VERSION=OFF
+cmake --build build -j"$(sysctl -n hw.ncpu)"
+```
 
-### ScanTailor Enhanced
-
-* #### Auto margins \[improved\]
-  Auto margins feature allows keep page content on original place. In the Margins step
-  you can choose from Auto, Manual (default) and Original mode. The manual mode
-  is the original one. Auto mode try to decide if it is better to align page top,
-  bottom or center. Original mode keeps page on their vertical original position.
-  
-  *This feature has been improved. See [page area](#page-area) feature description.*
-  *Also see [ScanTailor Advanced fixes & improvements](#scantailor-advanced-fixes--improvements)*
-
-* #### Page detect \[reworked\]
-  Page detect feature allows detect page in black margins or switch off page content
-  detection and keep original page layout.
-  
-  *This feature has been reworked.*
-  *See [ScanTailor Advanced fixes & improvements](#scantailor-advanced-fixes--improvements) for more information.*
- 
-* #### Deviation \[reworked\]
-  Deviation feature enables highlighting of different pages. Highlighted in red are pages
-  from Deskew filter with too high skew, from Select Content filter pages with different
-  size of content and in Margins filter are highlighted pages which does not match others.
-  
-  *This feature has been reworked. See [ScanTailor Advanced fixes & improvements](#scantailor-advanced-fixes--improvements) for more information.*
- 
-* #### Picture shape \[reworked\]
-  Picture shape feature adds option for mixed pages to choose from free shape and rectangular
-  shape images. This patch does not improve the original algoritm but creates from the
-  detected "blobs" rectangular shapes and the rectangles that intersects joins to one.
-  
-  *This feature has been reworked. See [rectangular picture shape](#rectangular-picture-shape) feature description.*
-
-* #### Multi column thumbnails view \[reworked\]
-  This allows to expand and un-dock thumbnails view to see more thumbnails at a time.
-  
-  *This feature had performance and drawing issues and has been reworked.*
-  
-### ScanTailor Featured
-
-* #### ScanTailor Featured fixes & improvements
-  * Deleted 3 Red Points.   
-    The 3 central red points on the topmost (bottom-most) horizontal blue line of the dewarping
-    mesh are now eliminated. 
-  * Manual dewarping mode auto switch.   
-    The dewarping mode is now set to MANUAL (from OFF) after the user has moved the dewarping mesh.
-  * Auto dewarping vertical half correction.   
-    This patch corrects the original auto-dewarping in half
-    the cases when it fails. If the vertical content boundary angle (calculated by auto-dewarping)
-    exceeds an empirical value (2.75 degrees from vertical), the patch adds a new point to
-    the distortion model (with the coordinates equal to the neighboring points) to make
-    this boundary vertical. The patch works ONLY for the linear end of the top (bottom)
-    horizontal line of the blue mesh (and not for the opposite curved end).
- 
-* #### Line vertical dragging on dewarp
-  You can move the topmost (bottom-most) horizontal blue line of the dewarping mesh up and
-  down as a whole - if you grab it at the most left (right) red point - holding down the CTRL key. 
- 
-* #### Square picture zones \[reworked\]
-  You can create the rectangular picture zones - holding down the CTRL key. 
-  You can move the (rectangular) picture zones corners in an orthogonal manner - holding down the CTRL key.
-  
-  *This feature has been reworked and is now a part of [new zone interaction modes](#new-zone-interaction-modes) feature.*
-  
-* #### Auto save project \[optimized\]
-  Set the "auto-save project" checked in the Settings menu and you will get 
-  your project auto-saved provided you have originally saved your new project.
-  Works at the batch processing too. 
-  
-  *This feature had performance issues and has been optimized.*
- 
-* #### Quadro Zoner \[reworked\]
-  Another rectangular picture zone shape. This option is based on [Picture shape](#picture-shape),
-  [Square picture zones](#square-picture-zones). It squeezes every Picture shape zone down to the real
-  rectangular picture outline and then replaces it (the resulting raster zone) by a vector rectangular zone,
-  so that a user could easily adjust it afterwards (by moving its corners in an orthogonal manner).
-  
-  *This feature has been reworked. See [rectangular picture shape](#rectangular-picture-shape) feature description.*
- 
-* #### Marginal dewarping 
-  An automatic dewarping mode. Works ONLY with such raw scans that have the top and 
-  bottom curved page borders (on the black background). It automatically sets the red points 
-  of the blue mesh along these borders (to create a distortion model) and then dewarps the scan 
-  according to them. Works best on the low-curved scans. 
- 
- 
-*Note: Other features of this version, such as Export, Dont_Equalize_Illumination_Pic_Zones, Original_Foreground_Mixed
-has't been moved due to dirty realization. Their functionality is fully covered by 
-[full control over settings on output](#full-control-over-settings-on-output) and 
-[splitting output](#splitting-output) features.*
-
-### ScanTailor Universal
-
-* #### ScanTailor Universal fixes & improvements
-  * Improvements for the thumbnail view.  
-    1. More accurate multi-column list handling.
-    2. Scaling thumbnails via **`Alt+Wheel`**.
-    
-  * Fixed some bugs of official and Enhanced version.
-
-### ScanTailor Advanced
-
-* #### ScanTailor Advanced fixes & improvements
-  * Portability.  
-    The settings and program files are stored in the folder with the application.  
-    *Note: If installed into a system directory, where config and data files can't be written into the
-    folder with the application executable, ScanTailor Advanced works as a standalone app and stores
-    its settings and application data in the appropriate system specific paths.*
-  
-  * Page splitting settings now influence on the output by filling offcut.
-    Fill offcut option has been added.
-  
-  * Page layout and all the other views now consider splitting settings.
-    Corresponding improvements are done for thumbnails.
-  
-  * Changed ScanTailor behavior on page split stage.
-    1. Reworked apply cut feature. Now on applying cut to the pages with different dimensions 
-       than the page the cut applied to, ScanTailor tries to adapt cutters instead of fully
-       rejecting the cut setting and switching to auto mode for those pages as it was before.
-       The later was annoying as pages could be similar and had the difference in a few pixels.
-    2. Added check to reject invalid cut settings in manual mode.
-    3. UI: Added cutters interaction between each other. They can't more intersect each other,
-       which created a wrong page layout configuration before.
-  
-  * Reworking on [multi column thumbnails view](#multi-column-thumbnails-view-reworked) feature from ver. Enhanced. 
-    Now thumbnails are shown evenly.
-  
-  * Added option to control highlighting the thumbnails of pages with high deviation with red asterisks. 
-    The option refreshes the thumbnails instantly.
-  
-  * Deviation feature reworked.  
-    1. A deviation provider implemented.  
-       It supports caching and recalculates the values on demand. There isn't more any necessity to store deviation in page parameters and so in the project file, that approach caused some problems as the deviation is not actually a page parameter and depends on all the pages in the project.  
-    2. Added sorting by decreasing deviation.
-
-  * Page/content boxes and auto margins features fixes & improvements.  
-    1. Added a feature of dragging both content and page areas by using **`Shift+LMB`** combination.
-    2. A page box implementation reworked. Now it's interactive and can be adjusted by the same way as a content box is done.
-    3. The page rectangle does not require refreshing page and won't be reset on the content area changes.
-    4. Implemented applying the page/content boxes to the other pages automatically correcting the position of the boxes.
-    5. Added width and height parameters to regulate the page box size in manual mode.
-    6. Auto margins option has been moved out of the alignment settings and does no more force to use only the original layout.
-    7. Auto margins feature now considers page box changes made at the selection content stage.
-    8. Other bug fixes and improvements.
-
-  * Auto and original alignment modes reworked:  
-    1. The original and auto alignment modes didn't work correctly due to the error in code.
-    2. Both the modes didn't work rightly after select content stage or reopening the project file, always requiring secondary batch processing of every page at margins stage to work correctly.
-    3. Reworked calculation method for the original alignment. Now it is more precise.
-    4. Original alignment mode now considers the page box from 4th stage.
-    5. Fixed behaviour of horizontal alignment, when the original mode enabled, and auto margins has been enabled/disabled. Also on applying auto-margins / original alignment to the set of pages, that is now set correctly for each page.
-    6. Added ability to separately control vertical and horizontal automatic alignment when auto or original alignment mode enabled.  
-
-  * Changed the way of the adjustment of the despeckle strength.  
-    Now that's set via the slider. It allows to adjust the despeckle strength more smoothly and exactly.
-    Value 1.0 matches the old cautious mode, 2.0 - normal and 3.0 - aggressive.
-    
-  * Improvements on the thumbnails view and navigation:  
-    * Saving selection of pages on filter switch.
-    * Separate highlighting for selection leader in thumbnails.
-    * Navigating between selected pages.
-      Use **`Shift+PgUp/Q`** and **`Shift+PgDown/W`** to navigate between selected pages.
-    * Added buttons to navigate between pages.
-    * Multi page selection mode without using keyboard.
-    * The question as to whether cancel multi page selection.
-    * Go to a page by its number (**`Ctrl+G`** shortcut).
-
-  * Added options in the settings to manage the quality and size of thumbnails.  
-    It's possible to switch thumbnail quality while working on a project with the changes applied immediately.
-    For every quality chosen a cache is created.  
-    *Usage example: you could use this feature for the preview purpose, which is faster than simple navigating between pages.
-    Undock the thumbnails panel, set the quality, for ex., to 700, and size to 1000. You can mark problem pages with `Ctrl+Click` on a thumbnail
-    and navigate between these selected pages after finishing to fix them. To finish the preview change the quality and size values back
-    and dock the panel.*  
-
-  * Fixed other bugs of official, Enhanced and Featured versions and made lots of other improvements.
-
-* #### Light and Dark color schemes
-  You can choose a desired color scheme in settings.
-
-* #### Multi-threading support for batch processing
-  This significantly increases the speed of processing. The count of threads to use can be
-  adjusted while processing.
-  
-  **Warning!** More threads requires more memory to use. Exclude situations of that to be overflowed.  
-
-* #### Full control over settings on output
-  This feature enables to control filling margins, normalizing illumination before binarization,
-  normalizing illumination in color areas and Savitzky-Golay and morphological smoothing options at the output stage
-  in any mode (of course, those setting that can be applied in the current mode).
- 
-* #### Filling outside areas
-  Now outside pixels can be filled with the background color of the page.
-  
-  Added filling setting with the following options:
-    1. Background: estimate the background and fill outside pixels with its color.
-    2. White: always fill with white.
- 
-* #### Tiff compression
-  Tiff compression options allow to disable or change compression method in tiff files.
-  
-  There are two options in settings dialog: B&W and color compression. 
-    1. The B&W one has None, LZW, Deflate and CCITT G4 (Default) options.
-    2. The color one has None, LZW (Default), Deflate and JPEG options.
-
-* #### Adaptive binarization
-  Sauvola and Wolf binarization algorithms have been added. They can be applied when
-  normalizing illumination does not help.
- 
-* #### Splitting output
-  The feature allows to split the mixed output scans into the pairs of a foreground (letters) 
-  and background (images) layer.
-  
-  You can choose between B&W or color (original) foreground.
-  
-  It can be useful:
-    * for the further DjVu encoding,
-    * to apply different filters to letters and images, which when being applied to the whole
-    image gives worse results.
-    * to apply a binarization to the letters from a third party app without affecting the images.
-   
-  *Note: That does not rename files to 0001, 0002... It can be made by a third party app, for example 
-  [Bulk Rename Utility](http://www.bulkrenameutility.co.uk/Main_Intro.php)*
-
-* #### Original background
-  This feature is a part of the [splitting output](#splitting-output) feature.
-  
-  It allows to preserve the original image background in the format ready for the further processing, when BW foreground is used.
-  It can be used to encode into DjVu the pages with the complex background using the semi-auto "split layers" method which gives much higher quality results than DjVu auto segmenter.
-  Also this feature can be used to extract high contrast elements of gradient images into the foreground layer by using second processing of the layer with pictures ("background").
-  
-  Properties of the original background:
-    * Original background images are saved into "original_background" folder in "out" directory.
-    * Pure black (`#000000`) and white (`#ffffff`) colors of original background image are reserved into `#010101` and `#fefefe`, respectively.
-    * Picture zones are marked with black when the BW content is marked with white. This property allow to use "select by color" feature of an image editor to select needed areas for their further processing, for example, apply blur to white holes and their nearest areas to get an effective compression level of the background layer in DjVu.
-    * Filling zones feature also removes trash and speckles from the original background when applied to the foreground layer.
-
-* #### Color segmenter and posterization
-  Color segmentation and posterization (color quantization) features have been implemented.
-  
-  Color segmentation allows to split the image into color segments and colorize b&w mask.
-  Posterization allows to reduce the number of colors of the image by grouping similar colors.
-  The main use of posterization is to be applied to segmented image to get an indexed image, that can then be encoded into DjVu as the foreground layer. It allows to create high-quality DjVu files with color text and elements having maximal compression level.
-  Posterization can also be used in color mode and can be applied to usual color gradient images for different purposes, for example, to increase their compression efficiency.
-
-* #### Rectangular picture shape
-  "Quadro" picture shape mode from Featured was merged with Rectangular one from Enhanced. Also removed restriction of ver. Featured on deleting all the auto zones. Before it resulted in resetting all the auto zones back.
-  Added sensitivity option. If sensitivity equals 25%, the results will be the same as they were in old "Quadro" mode, if 100% - as in old "Rectangular".
-
-* #### New zone interaction modes  
-  * Zone creation mode:  
-    Press **`Z`** to switch to polygonal mode.  
-    Press **`X`** to switch to lasso (free drawing) mode.  
-    Press **`C`** to switch to rectangular mode.  
-    Press **`Z`** or **`X`** while creating a new zone to switch between polygonal and rectangular modes respectively.  
-  * Zone:  
-    **`Shift+LMB`** on a zone - drag the zone.  
-    **`Ctrl+Shift+LMB`** on a zone - drag the zone copying.  
-    **`Ctrl+Alt+Click`** - copy the latest created zone to the current cursor position.  
-    **`Del`** when the cursor is over a zone - delete the zone.  
-  * Zone vertex:  
-    **`D`** when the cursor is over a zone vertex - delete the vertex.  
-    Hold **`Ctrl`** when dragging a zone vertex - make the angle of the vertex right.  
-
-* #### Saving zoom and focus on switching output tabs
-  The save is precise and considers the images transformations.  
-  Also added a feature of swithing the output tabs by using **`Ctrl+1..5`** keys combinations.  
-
-* #### Measurement units system
-  The settings are available in the main window menu.
-  Available units: pixels, millimetres, centimetres and inches.
-  
-  The system affects every aspect of the program, so, for example, it's now possible to adjust margins in pixels, but not only in millimetres or inches.
-
-* #### Status bar panel
-  The panel shows the next information: zone creation mode icon, mouse position relative to the image, physical size of the image, position of the selected page in current order and the page name and type (`[L]` or `[R]` - left or right page, if the page has been splitted).
-  
-  This feature is also affected by [measurement units system](#measurement-units-system).
-
-* #### Default parameters
-  Default parameters system supporting custom profiles has been implemented.
-  
-  The system allows to manage the default filter settings for every stage.
-  Those filter parameters will be set as defaults for any new project created.
-  
-  For example, it allows to set your own default margins standard, but not default 5, 10, 5, 10 mm, and so for the other parameters.
-  
-  Peculiarities:
-    1. There are two default profiles: "Default" and "Source". The "Default" profile represents default ST filter settings, the "Source" one represents the settings giving the source as output without any changes.
-    2. A user can create its own profiles. User profiles are stored in `config/profiles` folder or in an system specific one for application data.
-    3. The system consider the units settings from the [measurement units system](#measurement-units-system). Units are stored in the profile and ST automatically converts the values if needed.
-
-* #### Collapsible filter options.
-  Now group boxes containing filter options can be collapsed/expanded.  
-  The collapse status is preserved between restarts of the application.  
- 
-* #### Auto adjusting content area.
-  Use **`double-click`** on content to automatically adjust the content area.  
-  If the content is outside the area, the later will automatically be expanded and adjusted to the content at the position where double-click has been,
-  otherwise the area edge, nearest to that position, will be adjusted (on clicking hold **`Shift`** pressed to select
-  left or right edge only or **`Ctrl`** to select top or bottom one, or **`Shift+Ctrl`** to adjust both the nearest vertical and horizontal edges).
-  
-  It's much faster now to correct the content area if, for example, the page number has been missed by the auto algorithm.
-  It is no more required to manually and laboriously move the corners and edges of the content box.
-  
-* #### Black on white detection
-  This feature allows to process images with light content on dark background correctly by correcting auto algorithms.  
-  
-  Peculiarities:
-    1. Auto detection of pages with light content on dark background can be enabled or disabled in the settings.
-       Auto detection at the output stage is controlled separately.
-    2. There is per page control over the mode in the output filter options.
-    
-* #### Guides
-  This feature gives you a more flexible and precise way of positioning content in the page layout.
-  These are horizontal or vertical lines you can display on a page at the margins stage \(when aligning enabled\).  
-  *Note: Guides are adaptive to the page soft margins, i.e. when the latter changed the guides on the page
-  are automatically adjusted to match the new content position without requiring any manual re-adjusting.*
-  
-  Capabilities:  
-    * **`Right-click`** to create/remove guides from the **context menu** called.  
-    * **`Right-click`** on a guide to delete that guide from the **context menu** called.  
-    * **`Ctrl+Alt+LMB`** - drag the guide under the cursor.  
-    * **`Shift/Ctrl+LMB`** on the content rectangle - drag the page content.
-      Hold **`Shift`** pressed to restrict moving along the horizontal axis only or **`Ctrl`** for the vertical one.
-      Hold **`Shift+Ctrl`** for usual dragging.  
-    * **`Double-click`** on content - automatically attach that content to the nearest guide.
-      Hold **`Shift`** pressed to select vertical guides only or **`Ctrl`** for horizontal ones.
-      Hold **`Shift+Ctrl`** to attach that to both the nearest vertical and horizontal guides.  
-    * Use the **context menu** to enable/disable showing the hard margins rectangle.  
-
-## License
-
-This software is licensed under GNU GPLv3, you can read more about it on our [LICENSE](/LICENSE) file.
-
-## Building (detailed)
-
-#### Building on Linux (Ubuntu / Debian)
-
-Install the required dependencies:
+### Linux (Ubuntu / Debian)
 
 ```bash
 sudo apt install build-essential cmake \
@@ -455,44 +111,183 @@ sudo apt install build-essential cmake \
   libjpeg-dev libpng-dev libtiff-dev zlib1g-dev
 ```
 
-Configure and build (out-of-tree build is required):
-
 ```bash
-mkdir build && cd build
-cmake ..
-make -j$(nproc)
+mkdir build && cd build && cmake .. && make -j"$(nproc)"
 ```
 
-For **offline or minimal chroot** builds where unit tests cannot be built (issue #61), use `cmake -DBUILD_TESTS=OFF ..` to skip the test targets.
+`sudo make install` installs system-wide. `./build-deb.sh` builds
+`scantailor-advanced_<version>_<arch>.deb` in the source directory, with icon and menu entry.
 
-The executable will be in the `build` directory. To install system-wide: `sudo make install`.
+### Windows
 
-To build a `.deb` package (with application icon and menu entry):
+Native builds: follow [scantailor-libs-build](https://github.com/ScanTailor-Advanced/scantailor-libs-build).
 
-```bash
-./build-deb.sh
-```
-
-This compiles the project and produces `scantailor-advanced_<version>_<arch>.deb` in the project root. Install with `sudo dpkg -i scantailor-advanced_*.deb`.
-
-#### Building a Windows .exe from Linux (cross-compile)
-
-You can cross-compile the Windows executable from Linux using [MXE](https://mxe.cc/) (M Cross Environment). One-time MXE setup (builds Qt5 and dependencies; can take 1–2 hours):
+Cross-compiling from Linux uses [MXE](https://mxe.cc/). The one-time setup takes an hour or two:
 
 ```bash
-git clone https://github.com/mxe/mxe.git ~/mxe
-cd ~/mxe
-make MXE_TARGETS=x86_64-w64-mingw32.static qt5 jpeg libpng tiff zlib boost
+git clone https://github.com/mxe/mxe.git ~/mxe && cd ~/mxe && make MXE_TARGETS=x86_64-w64-mingw32.static qt5 jpeg libpng tiff zlib boost
 ```
 
-Then from the ScanTailor Advanced source directory:
+Then, from the source directory, `./build-windows.sh` produces `build-win-static/scantailor.exe`.
+`./build-windows.sh shared` makes a smaller build that needs the DLLs from MXE's
+`usr/x86_64-w64-mingw32.shared/bin/` next to the `.exe`.
 
-```bash
-./build-windows.sh
-```
+Community test material is collected in
+[scantailor-testing](https://github.com/ImageProcessing-ElectronicPublications/scantailor-testing).
 
-This produces `build-win-static/scantailor.exe`. Use `./build-windows.sh shared` for a smaller build that requires shipping DLLs from MXE’s `usr/x86_64-w64-mingw32.shared/bin/` alongside the .exe.
+## Features
 
-#### Building on Windows (native)
+ScanTailor works in six stages: Fix Orientation, Split Pages, Deskew, Select Content, Margins and Output.
+The features are listed below in that order, after those that apply everywhere.
 
-Go to [this repository](https://github.com/4lex4/scantailor-libs-build) and follow the instructions given there.
+### Working with projects
+
+- **Relative paths.** Project files store image paths relative to the project file where possible, so
+  a project folder can be moved or synced.
+- **Auto-save.** With *Auto-save the existing project* enabled in the settings, a project that has
+  been saved once is saved automatically, during batch processing too.
+- **Default parameters.** *Tools → Default parameters* sets the starting settings of every stage for
+  new projects, in named profiles. The built-in profiles are *Default* (ScanTailor's defaults) and
+  *Source* (output identical to the input). User profiles are stored, with their units, in
+  `config/profiles` next to a portable executable, or in the per-user application-data folder.
+  Values are converted when the units differ.
+- **Units.** Pixels, millimetres, centimetres or inches (*Tools → Units*), used everywhere, including
+  margins and the status bar.
+- **Status bar.** Shows the zone creation mode, the cursor position on the image, the physical size of
+  the image, the page's position in the current order, and its name and side (`[L]` or `[R]` after
+  splitting).
+- **Reload.** **`F5`** reloads the current page. Output is regenerated when a source image has changed.
+- **Fix DPI and Relinking** (*Tools* menu) correct wrong source resolutions and find images that have
+  moved.
+- **Interface.** Dark, light or native colour scheme. Option groups can be collapsed, and stay so
+  between sessions. Optional OpenGL acceleration. Translations: French, German, Korean, Polish,
+  Portuguese, Russian and Spanish.
+- **Settings location.** A portable build (`PORTABLE_VERSION`, on by default) keeps its settings in a
+  `config` folder next to the executable when that folder is writable, and in the system's per-user
+  location otherwise. On macOS an app bundle always uses the per-user location.
+
+### Thumbnails and navigation
+
+- Thumbnails can be shown in one or several columns, and the panel can be undocked.
+  **`Ctrl++`** / **`Ctrl+-`** or **`Alt+Wheel`** scale them. The settings set the thumbnail quality and
+  display size (defaults 200 and 250 pixels); a separate cache is kept for each quality.
+- Pages can be ordered by decreasing deviation, and pages with high deviation can be marked with a red
+  asterisk. The deviation is computed per stage (skew at Deskew, content size at Select Content, page
+  size at Margins), and the settings set how sensitive it is.
+- *Pause automatic thumbnail reordering* keeps the order still while thumbnails refresh.
+- Selection: **`Ctrl+Click`**, **`Shift+Click`**, **`Ctrl+drag`** (rubber band), or the multi-page
+  selection mode without the keyboard. The selection survives switching stages, and the leader of the
+  selection is highlighted separately.
+- Navigation: **`Home`**, **`End`**, **`PgUp`/`Q`** and **`PgDown`/`W`** move between pages,
+  **`Shift+PgUp/Q`** and **`Shift+PgDown/W`** between selected pages, and **`Ctrl+G`** goes to a page
+  number.
+
+### Fix Orientation
+
+- Rotate pages in steps of 90°.
+- **Manual trim** crops each scan before the later stages.
+
+### Split Pages
+
+- Applying a cut to pages of slightly different size adapts the cutters instead of switching those pages
+  back to auto mode. Invalid manual cuts are rejected, and the cutters cannot cross each other.
+- The split is respected in every later view and in the thumbnails. *Fill offcut* (at Output) fills the
+  cut-off part of the page.
+- *Tools → Reverse two-page spread order* swaps left and right pages, for example for right-to-left
+  books.
+
+### Deskew
+
+- Auto or manual rotation. **Top page edge** mode measures the skew from the top edge of the page, which
+  works well for book scans on a dark background.
+- **Oblique (shear) correction**, automatic or manual, with a vertical lever for adjusting it by hand. It
+  can be turned off for pages that only need rotation, and the default can be set in a profile.
+
+### Select Content
+
+- **Page detection** finds the page in black margins, or can be turned off to keep the original layout.
+- The **page box** is interactive, like the content box, and has width and height fields in manual mode.
+  Changing the content box does not reset it. Applying page or content boxes to other pages corrects
+  their position for each page.
+- **`Double-click`** on content fits the content box to it: the box grows to take in content outside
+  it, or the nearest edge moves. Hold **`Shift`** for the left or right edge only, **`Ctrl`** for the top
+  or bottom edge only, **`Shift+Ctrl`** for both nearest edges.
+- **`Shift+LMB`** drags the content and page boxes together.
+
+### Margins
+
+- **Alignment.** Horizontal and vertical alignment can each be automatic. *Auto margins* decides between
+  aligning a page to the top, centre or bottom; *Original* keeps the page where it was on the scan,
+  taking the page box from Select Content into account.
+- **Match size with other pages**, optionally applied to every page at once. *Lock aggregate size for
+  matching* keeps the reference size fixed while switching pages.
+- Margins can be negative, and the source DPI is shown in the panel.
+- **Guides** are horizontal or vertical lines for positioning content; they follow the page when its
+  margins change.
+  - **`Right-click`** adds or removes guides.
+  - **`Ctrl+Alt+LMB`** drags a guide.
+  - **`Shift+LMB`** or **`Ctrl+LMB`** on the content moves it horizontally or vertically only, and
+    **`Shift+Ctrl+LMB`** moves it freely.
+  - **`Double-click`** on content attaches it to the nearest guide (**`Shift`** for vertical guides,
+    **`Ctrl`** for horizontal ones, **`Shift+Ctrl`** for both).
+  - The context menu also shows or hides the hard-margins rectangle.
+
+### Output
+
+- **Modes:** black and white, colour/grayscale, or mixed. Output resolution up to 1200 DPI.
+- **Binarization methods:** Otsu, Sauvola, Wolf, Fox, Window, Bradley, Grad, EdgePlus, BlurDiv and EdgeDiv.
+  Illumination equalization (before binarization and in colour areas), Savitzky-Golay and morphological
+  smoothing can be set in any mode where they apply.
+- **Colour operations:** Wiener denoiser, colour segmentation, posterization (2 to 6 levels give an
+  indexed image), normalize, and *Force b&w* for grayscale gradients.
+- **Filling:** areas outside the content are filled with the estimated background colour, white or black.
+  *Fill margins*, *Fill offcut* and *Fill outside page box* choose which areas.
+- **Despeckling** has a strength slider: 1.0 matches the old *cautious* setting, 2.0 *normal* and 3.0
+  *aggressive*.
+- **Light content on a dark background** can be detected automatically (with a separate setting for the
+  Output stage) and set per page.
+- **Picture zones** in mixed mode: automatic detection with free or rectangular shapes (a sensitivity of
+  25% reproduces the old Featured *Quadro* mode, 100% the old Enhanced *Rectangular* one), plus zones
+  drawn by hand. A zone's properties make it add to or subtract from the picture layer, or add its area
+  to the foreground or background.
+  - **`Z`** polygonal, **`X`** lasso, **`C`** rectangular creation mode.
+  - **`Shift+LMB`** drags a zone, **`Ctrl+Shift+LMB`** drags a copy, **`Ctrl+Alt+Click`** copies the
+    last zone to the cursor, **`Del`** deletes the zone under the cursor.
+  - **`D`** deletes the vertex under the cursor; hold **`Ctrl`** while dragging a vertex to make a right
+    angle.
+- **Split output** writes mixed pages as a foreground layer (black-and-white or colour text) and a
+  background layer (pictures), for DjVu encoding or for processing each layer separately. *Original
+  background* also saves the untouched background of a black-and-white foreground in
+  `out/original_background`: pure black and white become `#010101` and `#fefefe`, picture zones are
+  black and text is white, so an image editor can select areas by colour.
+- **Dewarping:** manual, automatic, or *marginal*, which follows the curved top and bottom page edges on
+  a dark background. Changes to the mesh switch the page to manual mode.
+  - **`Ctrl`** + drag on the leftmost or rightmost point of the top or bottom mesh line moves the whole
+    line up or down.
+- **Tabs.** **`Ctrl+1`** to **`Ctrl+5`** switch the output tabs, and the zoom and position are kept when
+  switching.
+- **TIFF compression** is set separately for black-and-white output (none, LZW, Deflate, CCITT G4) and
+  colour output (none, LZW, Deflate, JPEG).
+
+### Batch processing
+
+Pages are processed by several threads at once; the number can be changed while a batch runs. Each
+thread needs its own memory, so a high count on large scans can run out of memory.
+
+## History and credits
+
+- **ScanTailor** was written by Joseph Artsimovich.
+- **ScanTailor Enhanced**, **Featured** and **Universal** were community variants that added features
+  such as auto margins, page detection, deviation highlighting, picture shapes, marginal dewarping and
+  auto-save.
+- **ScanTailor Advanced** was started by [4lex4](https://github.com/4lex4/scantailor-advanced), who merged
+  those variants and reworked many of their features.
+- **ScanTailor-Advanced/scantailor-advanced** continued it after that repository went quiet: the Qt 6 port,
+  translations (Polish by @ukolaj-s, French by @maltaisn, Korean by @brendan-t and @mirusu400), black
+  filling, 1200 DPI, oblique correction, further binarization methods (Fox and Window come from
+  zvezdochiot's work), and Linux packaging.
+- **This branch** adds the macOS fixes listed [above](#this-branch-macos-on-apple-silicon).
+
+## License
+
+GNU GPLv3; see [LICENSE](LICENSE).
