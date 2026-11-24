@@ -1300,6 +1300,20 @@ void MainWindow::filterResult(const BackgroundTaskPtr& task, const FilterResultP
     return;
   }
 
+  // Hand the freed worker its next page before doing any GUI work: updating thumbnails
+  // below can take a while on large projects, and workers would sit idle meanwhile.
+  if (isBatchProcessingInProgress()) {
+    feedWorkerPool();
+  }
+
+  if (!result) {
+    // The task failed with an exception (already logged). Leave the page unprocessed.
+    if (isBatchProcessingInProgress() && m_batchQueue->allProcessed()) {
+      stopBatchProcessing();
+    }
+    return;
+  }
+
   if (!isBatchProcessingInProgress()) {
     if (!result->filter()) {
       // Error loading file.  No special action is necessary.
@@ -1345,20 +1359,24 @@ void MainWindow::filterResult(const BackgroundTaskPtr& task, const FilterResultP
       return;
     }
 
-    do {
-      const BackgroundTaskPtr task(m_batchQueue->takeForProcessing());
-      if (!task) {
-        break;
-      }
-      m_workerThreadPool->submitTask(task);
-    } while (m_workerThreadPool->hasSpareCapacity());
-
     const PageInfo page(m_batchQueue->selectedPage());
     if (!page.isNull()) {
       m_thumbSequence->setSelection(page.id());
     }
   }
 }  // MainWindow::filterResult
+
+void MainWindow::feedWorkerPool() {
+  // Always submit one task: the caller either just received a result, which frees a
+  // worker, or is starting a batch. Then top up any remaining capacity.
+  do {
+    const BackgroundTaskPtr task(m_batchQueue->takeForProcessing());
+    if (!task) {
+      break;
+    }
+    m_workerThreadPool->submitTask(task);
+  } while (m_workerThreadPool->hasSpareCapacity());
+}
 
 void MainWindow::debugToggled(const bool enabled) {
   m_debug = enabled;
