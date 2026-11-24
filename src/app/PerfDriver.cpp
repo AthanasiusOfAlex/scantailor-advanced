@@ -8,6 +8,8 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
+#include <QGraphicsScene>
+#include <QGraphicsView>
 #include <QSettings>
 #include <QStringList>
 #include <QTextStream>
@@ -27,6 +29,7 @@
 #include "ImageFileInfo.h"
 #include "ImageMetadata.h"
 #include "ImageMetadataLoader.h"
+#include "IncompleteThumbnail.h"
 #include "MainWindow.h"
 #include "PageSequence.h"
 #include "ProjectPages.h"
@@ -108,18 +111,32 @@ class PerfDriverImpl {
   }
 
   void emitLine(const QString& cmd, const QString& arg, qint64 wallMs, qint64 cpuMs, qint64 pages) {
-    const QString line = QString("%1,%2,%3,%4,%5,%6,%7\n")
+    const QString line = QString("%1,%2,%3,%4,%5,%6,%7,%8\n")
                              .arg(cmd, QString(arg).replace(',', '|'))
                              .arg(wallMs)
                              .arg(cpuMs)
                              .arg(m_maxLagMs)
                              .arg(m_stallMs)
-                             .arg(pages);
+                             .arg(pages)
+                             .arg(incompleteThumbnails());
     if (m_outFile.isOpen()) {
       m_outFile.write(line.toUtf8());
       m_outFile.flush();
     }
     std::fputs(("PERF " + line).toUtf8().constData(), stderr);
+  }
+
+  /** Pages the current stage considers unprocessed (shown with a question mark). */
+  int incompleteThumbnails() const {
+    int count = 0;
+    if (QGraphicsScene* scene = m_wnd->thumbView->scene()) {
+      for (QGraphicsItem* item : scene->items()) {
+        if (dynamic_cast<IncompleteThumbnail*>(item)) {
+          ++count;
+        }
+      }
+    }
+    return count;
   }
 
   qint64 pageCount() const { return m_wnd->isProjectLoaded() ? qint64(m_wnd->allPages().numPages()) : 0; }
@@ -186,6 +203,9 @@ class PerfDriverImpl {
     } else if (cmd == "settle") {
       m_quietMs = 0;
       pollSettle(wall, cpu0);
+    } else if (cmd == "minimize") {
+      m_wnd->showMinimized();
+      finishSync();
     } else if (cmd == "wait") {
       QTimer::singleShot(arg.toInt(), &m_context, [this, cmd, arg, wall, cpu0] {
         emitLine(cmd, arg, wall.elapsed(), processCpuMs() - cpu0, pageCount());

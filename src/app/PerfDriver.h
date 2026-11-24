@@ -19,11 +19,12 @@ class MainWindow;
  *   stage=<n>                 select a processing stage (0-based)
  *   batch                     batch-process all pages at the current stage and wait
  *   settle                    wait until the GUI thread has been responsive for a while
+ *   minimize                  minimise the main window (to test background throttling)
  *   wait=<ms>                 wait
  *   quit                      exit without saving
  *
  * One CSV line per command is appended to SCANTAILOR_PERF_OUT (or written to stderr):
- *   command,argument,wall_ms,cpu_ms,max_gui_lag_ms,gui_stall_ms,pages
+ *   command,argument,wall_ms,cpu_ms,max_gui_lag_ms,gui_stall_ms,pages,incomplete_thumbnails
  */
 class PerfDriver {
  public:
