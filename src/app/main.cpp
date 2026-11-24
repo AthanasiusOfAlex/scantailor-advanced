@@ -15,6 +15,7 @@
 #include <QStringList>
 
 #include "MainWindow.h"
+#include "PerfDriver.h"
 
 int main(int argc, char* argv[]) {
 #if QT_VERSION_MAJOR == 5
@@ -68,7 +69,7 @@ int main(int argc, char* argv[]) {
     QTimer::singleShot(0, mainWnd, &QMainWindow::showMaximized);
   }
 
-  if (args.size() > 1) {
+  if (!PerfDriver::installIfRequested(mainWnd) && (args.size() > 1)) {
     mainWnd->openProject(args.at(1));
   }
   return Application::exec();

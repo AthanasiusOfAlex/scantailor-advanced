@@ -27,6 +27,7 @@ set(gui_only_sources
     SystemLoadWidget.cpp SystemLoadWidget.h
     MainWindow.cpp MainWindow.h
     main.cpp
+    PerfDriver.cpp PerfDriver.h
     StatusBarPanel.cpp StatusBarPanel.h
     DefaultParamsDialog.cpp DefaultParamsDialog.h)
 

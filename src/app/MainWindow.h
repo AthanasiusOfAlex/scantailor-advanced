@@ -64,6 +64,7 @@ class MainWindow : public QMainWindow, private FilterUiInterface, private Ui::Ma
   DECLARE_NON_COPYABLE(MainWindow)
 
   Q_OBJECT
+  friend class PerfDriverImpl;
  public:
   MainWindow();
 
