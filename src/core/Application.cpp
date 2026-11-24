@@ -87,6 +87,14 @@ void Application::initPortableVersion() {
     return;
   }
 
+#ifdef Q_OS_MACOS
+  // Inside an application bundle the executable's directory is Contents/MacOS.
+  // Writing settings there would invalidate the bundle's code signature.
+  if (applicationDirPath().endsWith(QLatin1String(".app/Contents/MacOS"))) {
+    return;
+  }
+#endif
+
   const QDir portableConfigPath(applicationDirPath() + '/' + portableConfigDirName);
   if ((portableConfigPath.exists() && QTemporaryDir(portableConfigPath.absolutePath()).isValid())
       || (!portableConfigPath.exists() && portableConfigPath.mkpath("."))) {
