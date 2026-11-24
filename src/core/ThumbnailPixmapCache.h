@@ -52,6 +52,14 @@ class ThumbnailPixmapCache {
 
   void setThumbDir(const QString& thumbDir);
 
+  /**
+   * \brief Sets a read-only directory to look for a thumbnail in before
+   *        generating it from the source image.  Empty for none.
+   *
+   * A thumbnail found there is copied to the thumbnail directory.
+   */
+  void setFallbackThumbDir(const QString& fallbackThumbDir);
+
   const QSize& getMaxThumbSize() const;
 
   void setMaxThumbSize(const QSize& maxSize);

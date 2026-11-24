@@ -34,7 +34,21 @@ class Utils {
    */
   static void maybeCreateCacheDir(const QString& outputDir);
 
+  /**
+   * \brief The directory thumbnails for the given output directory are stored in.
+   *
+   * Normally $OUT/cache/thumbs. For output directories inside a cloud-synced folder
+   * it is a per-project directory in the local cache location instead: the sync
+   * client may evict local copies, and every thumbnail read would then be a download.
+   */
   static QString outputDirToThumbDir(const QString& outputDir);
+
+  /**
+   * \brief Where thumbnails may already exist if outputDirToThumbDir() is not $OUT/cache/thumbs.
+   *
+   * \return $OUT/cache/thumbs in that case, an empty string otherwise.
+   */
+  static QString outputDirToFallbackThumbDir(const QString& outputDir);
 
   static std::shared_ptr<ThumbnailPixmapCache> createThumbnailCache(const QString& outputDir);
 

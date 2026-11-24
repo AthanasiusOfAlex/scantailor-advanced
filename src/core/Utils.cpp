@@ -3,7 +3,9 @@
 
 #include "Utils.h"
 
+#include <QCryptographicHash>
 #include <QDir>
+#include <QStandardPaths>
 #include <QRegularExpression>
 #include <QTextDocument>
 #include <cmath>
@@ -43,14 +45,57 @@ void Utils::maybeCreateCacheDir(const QString& outputDir) {
   // so to prevent confusion this function return void.
 }
 
-QString Utils::outputDirToThumbDir(const QString& outputDir) {
+namespace {
+QString projectThumbDir(const QString& outputDir) {
   return outputDir + QLatin1String("/cache/thumbs");
+}
+
+/**
+ * Whether the directory is managed by a cloud sync client that can replace local
+ * files with placeholders (macOS File Provider: OneDrive, Dropbox, Google Drive,
+ * iCloud Drive). SCANTAILOR_THUMB_CACHE=local|project overrides the detection.
+ */
+bool useLocalThumbCache(const QString& outputDir) {
+  const QByteArray override(qgetenv("SCANTAILOR_THUMB_CACHE"));
+  if (override == "local") {
+    return true;
+  } else if (override == "project") {
+    return false;
+  }
+#ifdef Q_OS_MACOS
+  const QString path(QDir::cleanPath(QDir(outputDir).absolutePath()) + QLatin1Char('/'));
+  const QString library(QDir::homePath() + QLatin1String("/Library/"));
+  return path.startsWith(library + QLatin1String("CloudStorage/"))
+         || path.startsWith(library + QLatin1String("Mobile Documents/"));
+#else
+  Q_UNUSED(outputDir);
+  return false;
+#endif
+}
+}  // namespace
+
+QString Utils::outputDirToThumbDir(const QString& outputDir) {
+  if (!useLocalThumbCache(outputDir)) {
+    return projectThumbDir(outputDir);
+  }
+
+  const QByteArray key(QDir::cleanPath(QDir(outputDir).absolutePath()).toUtf8());
+  const QString dirName(QString::fromLatin1(QCryptographicHash::hash(key, QCryptographicHash::Sha1).toHex().left(16)));
+  const QString thumbDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + QLatin1String("/thumbs/")
+                         + dirName);
+  QDir().mkpath(thumbDir);
+  return thumbDir;
+}
+
+QString Utils::outputDirToFallbackThumbDir(const QString& outputDir) {
+  return useLocalThumbCache(outputDir) ? projectThumbDir(outputDir) : QString();
 }
 
 std::shared_ptr<ThumbnailPixmapCache> Utils::createThumbnailCache(const QString& outputDir) {
   const QSize maxPixmapSize = ApplicationSettings::getInstance().getThumbnailQuality();
-  const QString thumbsCachePath(outputDirToThumbDir(outputDir));
-  return std::make_shared<ThumbnailPixmapCache>(thumbsCachePath, maxPixmapSize, 40, 5);
+  auto cache = std::make_shared<ThumbnailPixmapCache>(outputDirToThumbDir(outputDir), maxPixmapSize, 40, 5);
+  cache->setFallbackThumbDir(outputDirToFallbackThumbDir(outputDir));
+  return cache;
 }
 
 QString Utils::qssConvertPxToEm(const QString& stylesheet, const double base, const int precision) {

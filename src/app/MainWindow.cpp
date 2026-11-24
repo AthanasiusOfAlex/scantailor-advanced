@@ -900,6 +900,7 @@ void MainWindow::performRelinking(const std::shared_ptr<AbstractRelinker>& relin
   Utils::maybeCreateCacheDir(m_outFileNameGen.outDir());
 
   m_thumbnailCache->setThumbDir(Utils::outputDirToThumbDir(m_outFileNameGen.outDir()));
+  m_thumbnailCache->setFallbackThumbDir(Utils::outputDirToFallbackThumbDir(m_outFileNameGen.outDir()));
   resetThumbSequence(currentPageOrderProvider());
   m_selectedPage.set(m_thumbSequence->selectionLeader().id(), getCurrentView());
 

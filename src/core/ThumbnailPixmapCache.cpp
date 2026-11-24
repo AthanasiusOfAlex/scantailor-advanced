@@ -91,6 +91,8 @@ class ThumbnailPixmapCache::Impl : public QThread {
 
   void setThumbDir(const QString& thumbDir);
 
+  void setFallbackThumbDir(const QString& fallbackThumbDir);
+
   const QSize& getMaxThumbSize() const;
 
   void setMaxThumbSize(const QSize& maxSize);
@@ -139,7 +141,10 @@ class ThumbnailPixmapCache::Impl : public QThread {
 
   void backgroundProcessing();
 
-  static QImage loadSaveThumbnail(const ImageId& imageId, const QString& thumbDir, const QSize& maxThumbSize);
+  static QImage loadSaveThumbnail(const ImageId& imageId,
+                                  const QString& thumbDir,
+                                  const QString& fallbackThumbDir,
+                                  const QSize& maxThumbSize);
 
   static QString getThumbFilePath(const ImageId& imageId, const QString& thumbDir, const QSize& maxThumbSize);
 
@@ -191,6 +196,7 @@ class ThumbnailPixmapCache::Impl : public QThread {
   RemoveQueue::iterator m_endOfLoadedItems;
 
   QString m_thumbDir;
+  QString m_fallbackThumbDir;
   QSize m_maxThumbSize;
   int m_maxCachedPixmaps;
 
@@ -249,6 +255,10 @@ ThumbnailPixmapCache::~ThumbnailPixmapCache() = default;
 
 void ThumbnailPixmapCache::setThumbDir(const QString& thumbDir) {
   m_impl->setThumbDir(RelinkablePath::normalize(thumbDir));
+}
+
+void ThumbnailPixmapCache::setFallbackThumbDir(const QString& fallbackThumbDir) {
+  m_impl->setFallbackThumbDir(fallbackThumbDir.isEmpty() ? QString() : RelinkablePath::normalize(fallbackThumbDir));
 }
 
 ThumbnailPixmapCache::Status ThumbnailPixmapCache::loadFromCache(const ImageId& imageId, QPixmap& pixmap) {
@@ -327,6 +337,11 @@ ThumbnailPixmapCache::Impl::~Impl() {
   wait();
 }
 
+void ThumbnailPixmapCache::Impl::setFallbackThumbDir(const QString& fallbackThumbDir) {
+  const QMutexLocker locker(&m_mutex);
+  m_fallbackThumbDir = fallbackThumbDir;
+}
+
 void ThumbnailPixmapCache::Impl::setThumbDir(const QString& thumbDir) {
   QMutexLocker locker(&m_mutex);
 
@@ -372,11 +387,12 @@ ThumbnailPixmapCache::Status ThumbnailPixmapCache::Impl::request(
 
   if (loadNow) {
     const QString thumbDir(m_thumbDir);
+    const QString fallbackThumbDir(m_fallbackThumbDir);
     const QSize maxThumbSize(m_maxThumbSize);
 
     locker.unlock();
 
-    pixmap = QPixmap::fromImage(loadSaveThumbnail(imageId, thumbDir, maxThumbSize));
+    pixmap = QPixmap::fromImage(loadSaveThumbnail(imageId, thumbDir, fallbackThumbDir, maxThumbSize));
     if (pixmap.isNull()) {
       return LOAD_FAILED;
     }
@@ -534,6 +550,7 @@ void ThumbnailPixmapCache::Impl::backgroundProcessing() {
       LoadQueue::iterator lqIt;
       ImageId imageId;
       QString thumbDir;
+      QString fallbackThumbDir;
       QSize maxThumbSize;
 
       {
@@ -574,9 +591,10 @@ void ThumbnailPixmapCache::Impl::backgroundProcessing() {
 
         // Copy those while holding the mutex.
         thumbDir = m_thumbDir;
+        fallbackThumbDir = m_fallbackThumbDir;
         maxThumbSize = m_maxThumbSize;
       }  // mutex scope
-      const QImage image(loadSaveThumbnail(imageId, thumbDir, maxThumbSize));
+      const QImage image(loadSaveThumbnail(imageId, thumbDir, fallbackThumbDir, maxThumbSize));
 
       const ThumbnailLoadResult::Status status
           = image.isNull() ? ThumbnailLoadResult::LOAD_FAILED : ThumbnailLoadResult::LOADED;
@@ -589,12 +607,25 @@ void ThumbnailPixmapCache::Impl::backgroundProcessing() {
 
 QImage ThumbnailPixmapCache::Impl::loadSaveThumbnail(const ImageId& imageId,
                                                      const QString& thumbDir,
+                                                     const QString& fallbackThumbDir,
                                                      const QSize& maxThumbSize) {
   const QString thumbFilePath(getThumbFilePath(imageId, thumbDir, maxThumbSize));
 
   QImage image(ImageLoader::load(thumbFilePath, 0));
   if (!image.isNull()) {
     return image;
+  }
+
+  if (!fallbackThumbDir.isEmpty()) {
+    // A thumbnail made by an earlier version is far cheaper to fetch than the source image.
+    const QString fallbackFilePath(getThumbFilePath(imageId, fallbackThumbDir, maxThumbSize));
+    if (QFile::copy(fallbackFilePath, thumbFilePath)) {
+      image = ImageLoader::load(thumbFilePath, 0);
+      if (!image.isNull()) {
+        return image;
+      }
+      QFile::remove(thumbFilePath);
+    }
   }
 
   image = ImageLoader::load(imageId);
