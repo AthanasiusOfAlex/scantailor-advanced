@@ -11,6 +11,7 @@
 #include "Application.h"
 #include "DefaultParams.h"
 #include "version.h"
+#include "ProjectReader.h"
 
 using namespace page_split;
 using namespace output;
@@ -75,7 +76,7 @@ std::unique_ptr<DefaultParams> DefaultParamsProfileManager::readProfile(const QS
 
   const QDomElement profileElement(doc.documentElement());
   const QString version = profileElement.attribute("version");
-  if (version.isNull() || (version.toInt() != PROJECT_VERSION)) {
+  if (!ProjectReader::isVersionReadable(version)) {
     if (status) {
       *status = INCOMPATIBLE_VERSION_ERROR;
     }
